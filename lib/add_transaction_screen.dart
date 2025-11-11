@@ -1,5 +1,8 @@
 // lib/add_transaction_screen.dart
 
+import 'dart:math';
+
+import 'package:bai1/db_helper.dart';
 import 'package:flutter/material.dart';
 import 'transaction_model.dart'; // Import model
 
@@ -40,37 +43,44 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   // Hàm xử lý khi nhấn nút "Lưu"
-  void _submitData() {
-    // Kiểm tra xem form có hợp lệ không
+  void _submitData() async {
+    // <--- 3. CHUYỂN HÀM NÀY SANG ASYNC
     if (_formKey.currentState!.validate()) {
-      // Nếu hợp lệ, lấy dữ liệu
       final enteredAmount = double.tryParse(_amountController.text);
       final enteredDescription = _descriptionController.text;
 
       if (enteredAmount == null || enteredAmount <= 0) {
-        // Có thể thêm 1 thông báo lỗi ở đây
         return;
       }
 
-      // TODO: Lưu dữ liệu này vào Sqflite/Hive
-      // Tạm thời, chúng ta chỉ đóng màn hình này lại
-      print('Dữ liệu đã nhập:');
-      print('Mô tả: $enteredDescription');
-      print('Số tiền: $enteredAmount');
-      print('Ngày: $_selectedDate');
-      print('Danh mục: $_selectedCategory');
+      // 4. TẠO OBJECT TRANSACTION MỚI
+      final newTransaction = Transaction(
+        // Tạo 1 ID ngẫu nhiên đơn giản
+        id: 'tx_${Random().nextDouble().toString()}',
+        description: enteredDescription,
+        amount: enteredAmount,
+        date: _selectedDate,
+        category: _selectedCategory,
+        // Giả sử form này chỉ thêm chi tiêu
+        // (Bạn có thể thêm 1 Switch() để cho phép chọn Thu/Chi)
+        isExpense: _selectedCategory != Category.thuNhap,
+      );
+
+      // 5. GỌI DATABASE ĐỂ LƯU
+      await DBHelper.insertTransaction(newTransaction);
 
       // Quay lại màn hình trước
-      Navigator.of(context).pop();
+      if (mounted) {
+        // Kiểm tra widget còn trên cây UI không
+        Navigator.of(context).pop();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thêm Giao dịch mới'),
-      ),
+      appBar: AppBar(title: const Text('Thêm Giao dịch mới')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -120,7 +130,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     return DropdownMenuItem(
                       value: category,
                       // Lấy tên enum (vd: anUong, diChuyen...)
-                      child: Text(category.name), 
+                      child: Text(category.name),
                     );
                   }).toList(),
                   onChanged: (newValue) {
